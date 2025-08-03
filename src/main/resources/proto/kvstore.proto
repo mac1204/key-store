@@ -1,0 +1,149 @@
+syntax = "proto3";
+
+package com.moniepoint.kvstore;
+
+option java_multiple_files = true;
+option java_package = "com.moniepoint.kvstore.grpc";
+option java_outer_classname = "KVStoreProto";
+
+// Key-Value Store Service
+service KVStoreService {
+  // Put a key-value pair
+  rpc Put(PutRequest) returns (PutResponse);
+  
+  // Get a value by key
+  rpc Get(GetRequest) returns (GetResponse);
+  
+  // Delete a key-value pair
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
+  
+  // Get all key-value pairs
+  rpc GetAll(GetAllRequest) returns (GetAllResponse);
+  
+  // Check if a key exists
+  rpc Exists(ExistsRequest) returns (ExistsResponse);
+  
+  // Get store statistics
+  rpc GetStats(StatsRequest) returns (StatsResponse);
+  
+  // Clear all data
+  rpc Clear(ClearRequest) returns (ClearResponse);
+  
+  // Compact the store
+  rpc Compact(CompactRequest) returns (CompactResponse);
+}
+
+// Put request
+message PutRequest {
+  string key = 1;
+  string value = 2;
+  int64 ttl = 3; // Time to live in seconds, 0 means no expiration
+}
+
+// Put response
+message PutResponse {
+  bool success = 1;
+  string key = 2;
+  string value = 3;
+  int64 timestamp = 4;
+  int64 ttl = 5;
+  string error = 6;
+}
+
+// Get request
+message GetRequest {
+  string key = 1;
+}
+
+// Get response
+message GetResponse {
+  bool success = 1;
+  string key = 2;
+  string value = 3;
+  int64 timestamp = 4;
+  int64 ttl = 5;
+  string error = 6;
+}
+
+// Delete request
+message DeleteRequest {
+  string key = 1;
+}
+
+// Delete response
+message DeleteResponse {
+  bool success = 1;
+  string message = 2;
+  string error = 3;
+}
+
+// Get all request
+message GetAllRequest {
+  // Empty message
+}
+
+// Get all response
+message GetAllResponse {
+  bool success = 1;
+  repeated KeyValuePair key_values = 2;
+  string error = 3;
+}
+
+// Key-value pair
+message KeyValuePair {
+  string key = 1;
+  string value = 2;
+  int64 timestamp = 3;
+  int64 ttl = 4;
+  bool deleted = 5;
+}
+
+// Exists request
+message ExistsRequest {
+  string key = 1;
+}
+
+// Exists response
+message ExistsResponse {
+  bool exists = 1;
+  string error = 2;
+}
+
+// Stats request
+message StatsRequest {
+  // Empty message
+}
+
+// Stats response
+message StatsResponse {
+  bool success = 1;
+  int64 size = 2;
+  int64 memory_usage = 3;
+  int64 disk_usage = 4;
+  int64 sstable_count = 5;
+  string error = 6;
+}
+
+// Clear request
+message ClearRequest {
+  // Empty message
+}
+
+// Clear response
+message ClearResponse {
+  bool success = 1;
+  string message = 2;
+  string error = 3;
+}
+
+// Compact request
+message CompactRequest {
+  // Empty message
+}
+
+// Compact response
+message CompactResponse {
+  bool success = 1;
+  string message = 2;
+  string error = 3;
+} 
