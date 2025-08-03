@@ -279,7 +279,6 @@ Logs are available at:
 
 - **Sharding**: Automatic data sharding across nodes
 - **Backup/Restore**: Automated backup and restore capabilities
-- **Monitoring**: Grafana dashboards and alerting
 - **Advanced Raft Features**: Snapshot support, dynamic membership
 
 ## License
