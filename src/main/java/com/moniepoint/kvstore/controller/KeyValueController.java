@@ -32,7 +32,16 @@ public class KeyValueController {
             @RequestBody Map<String, Object> request) {
         
         String value = (String) request.get("value");
-        Long ttl = (Long) request.get("ttl");
+        Object ttlObj = request.get("ttl");
+        Long ttl = null;
+        
+        if (ttlObj != null) {
+            if (ttlObj instanceof Integer) {
+                ttl = ((Integer) ttlObj).longValue();
+            } else if (ttlObj instanceof Long) {
+                ttl = (Long) ttlObj;
+            }
+        }
         
         KeyValue result;
         if (ttl != null && ttl > 0) {
