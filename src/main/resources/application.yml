@@ -25,29 +25,55 @@ kvstore:
       sync-interval: 1000  # 1 second in milliseconds
       max-size: 1GB
   
+  # Cluster configuration
+  cluster:
+    nodes:
+      - id: node1
+        host: localhost
+        port: 8080
+        grpcPort: 9090
+        raftPort: 9091
+      # Uncomment for multi-node setup:
+      # - id: node2
+      #   host: localhost
+      #   port: 8082
+      #   grpcPort: 9092
+      #   raftPort: 9093
+      # - id: node3
+      #   host: localhost
+      #   port: 8084
+      #   grpcPort: 9094
+      #   raftPort: 9095
+    
+    # Enable network discovery for multi-node setups
+    enable-network-discovery: false
+    
+    # Enable auto-election for multi-node setups
+    auto-election: true
+  
+  # Raft consensus configuration
+  raft:
+    # Enable Raft consensus (auto-detected based on node count)
+    enabled: true
+    
+    # Election timeout in milliseconds (only used for multi-node)
+    election-timeout: 5000
+    
+    # Heartbeat interval in milliseconds (only used for multi-node)
+    heartbeat-interval: 1000
+    
+    # Log persistence settings
+    log:
+      enabled: true
+      sync-interval: 1000
+      max-size: 1GB
+  
   # Compaction configuration
   compaction:
     enabled: false
     interval: 300000  # 5 minutes in milliseconds
     check-interval: 60000  # 1 minute in milliseconds
     max-duration: 300000  # 5 minutes in milliseconds
-  
-  # Raft configuration
-  raft:
-    enabled: true
-    election-timeout: 5000  # 5 seconds in milliseconds
-    heartbeat-interval: 1000  # 1 second in milliseconds
-    cluster:
-      nodes:
-        - id: node1
-          host: localhost
-          port: 8081
-        - id: node2
-          host: localhost
-          port: 8082
-        - id: node3
-          host: localhost
-          port: 8083
   
   # gRPC configuration for inter-node communication
   grpc:

@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
  * MemTable implementation for in-memory storage of key-value pairs.
@@ -52,7 +53,7 @@ public class MemTable {
      */
     public Optional<KeyValue> get(String key) {
         KeyValue value = data.get(key);
-        if (value != null && !value.isExpired() && !value.isDeleted()) {
+        if (value != null && !value.isDeleted()) {
             return Optional.of(value);
         }
         return Optional.empty();
@@ -61,7 +62,7 @@ public class MemTable {
     /**
      * Delete a key-value pair.
      */
-    public boolean delete(String key) {
+    public void delete(String key) {
         if (frozen) {
             throw new IllegalStateException("MemTable is frozen and cannot accept new writes");
         }
@@ -69,9 +70,7 @@ public class MemTable {
         KeyValue value = data.get(key);
         if (value != null) {
             value.setDeleted(true);
-            return true;
         }
-        return false;
     }
 
     /**
@@ -79,42 +78,33 @@ public class MemTable {
      */
     public boolean containsKey(String key) {
         KeyValue value = data.get(key);
-        return value != null && !value.isExpired() && !value.isDeleted();
+        return value != null && !value.isDeleted();
     }
 
     /**
      * Get all keys in the memtable.
      */
     public Set<String> getAllKeys() {
-        Set<String> keys = new HashSet<>();
-        for (Map.Entry<String, KeyValue> entry : data.entrySet()) {
-            KeyValue value = entry.getValue();
-            if (!value.isExpired() && !value.isDeleted()) {
-                keys.add(entry.getKey());
-            }
-        }
-        return keys;
+        return data.entrySet().stream()
+                .filter(entry -> !entry.getValue().isDeleted())
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
     }
 
     /**
      * Get all key-value pairs in the memtable.
      */
     public List<KeyValue> getAllKeyValues() {
-        List<KeyValue> values = new ArrayList<>();
-        for (Map.Entry<String, KeyValue> entry : data.entrySet()) {
-            KeyValue value = entry.getValue();
-            if (!value.isExpired() && !value.isDeleted()) {
-                values.add(value);
-            }
-        }
-        return values;
+        return data.values().stream()
+                .filter(value -> !value.isDeleted())
+                .collect(Collectors.toList());
     }
 
     /**
      * Get the size of the memtable.
      */
     public long size() {
-        return size.get();
+        return data.size();
     }
 
     /**
@@ -178,7 +168,7 @@ public class MemTable {
             Map.Entry<String, KeyValue> entry = iterator.next();
             KeyValue value = entry.getValue();
             
-            if (value.isExpired() || value.isDeleted()) {
+            if (value.isDeleted()) {
                 iterator.remove();
                 size.decrementAndGet();
                 // Update memory usage
@@ -214,7 +204,6 @@ public class MemTable {
         if (value.getKey() != null) size += value.getKey().length() * 2;
         if (value.getValue() != null) size += value.getValueAsString().length() * 2;
         size += 8; // timestamp
-        size += 8; // ttl
         size += 1; // deleted flag
         
         return size;
@@ -232,5 +221,29 @@ public class MemTable {
         stats.put("loadFactor", (double) memoryUsage.get() / maxMemoryUsage);
         
         return stats;
+    }
+
+    public boolean isEmpty() {
+        return data.isEmpty();
+    }
+
+    public long estimateSize() {
+        long totalSize = 0;
+        for (Map.Entry<String, KeyValue> entry : data.entrySet()) {
+            totalSize += estimateEntrySize(entry.getKey(), entry.getValue());
+        }
+        return totalSize;
+    }
+
+    private long estimateEntrySize(String key, KeyValue value) {
+        long size = 0;
+        
+        // Estimate size: key + value + timestamp + deleted flag
+        size += key.length() * 2; // UTF-8 encoding
+        size += value.getValueAsString().length() * 2; // UTF-8 encoding
+        size += 8; // timestamp (long)
+        size += 1; // deleted flag (boolean)
+        
+        return size;
     }
 } 

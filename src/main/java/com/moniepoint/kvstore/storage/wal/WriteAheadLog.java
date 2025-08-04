@@ -127,7 +127,6 @@ public class WriteAheadLog {
             dos.writeUTF(entry.getOperation());
             dos.writeUTF(entry.getKey());
             dos.writeUTF(entry.getValue());
-            dos.writeLong(entry.getTtl());
             dos.writeLong(entry.getTimestamp());
             
             return baos.toByteArray();
@@ -146,10 +145,9 @@ public class WriteAheadLog {
             String operation = dis.readUTF();
             String key = dis.readUTF();
             String value = dis.readUTF();
-            long ttl = dis.readLong();
             long timestamp = dis.readLong();
             
-            return new LogEntry(term, index, operation, key, value, ttl, timestamp);
+            return new LogEntry(term, index, operation, key, value, timestamp);
         }
     }
 
@@ -179,30 +177,26 @@ public class WriteAheadLog {
         private final String operation;
         private final String key;
         private final String value;
-        private final long ttl;
         private final long timestamp;
 
-        public LogEntry(long term, long index, String operation, String key, String value, long ttl) {
-            this(term, index, operation, key, value, ttl, System.currentTimeMillis());
+        public LogEntry(long term, long index, String operation, String key, String value) {
+            this(term, index, operation, key, value, System.currentTimeMillis());
         }
 
-        public LogEntry(long term, long index, String operation, String key, String value, long ttl, long timestamp) {
+        public LogEntry(long term, long index, String operation, String key, String value, long timestamp) {
             this.term = term;
             this.index = index;
             this.operation = operation;
             this.key = key;
             this.value = value;
-            this.ttl = ttl;
             this.timestamp = timestamp;
         }
 
-        // Getters
         public long getTerm() { return term; }
         public long getIndex() { return index; }
         public String getOperation() { return operation; }
         public String getKey() { return key; }
         public String getValue() { return value; }
-        public long getTtl() { return ttl; }
         public long getTimestamp() { return timestamp; }
 
         @Override
@@ -213,7 +207,6 @@ public class WriteAheadLog {
                     ", operation='" + operation + '\'' +
                     ", key='" + key + '\'' +
                     ", value='" + value + '\'' +
-                    ", ttl=" + ttl +
                     ", timestamp=" + timestamp +
                     '}';
         }

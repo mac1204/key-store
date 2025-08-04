@@ -1,0 +1,53 @@
+# Single-Node Configuration Example
+# Use this configuration for development or single-node deployment
+
+server:
+  port: 8080
+
+# KV Store Configuration
+kvstore:
+  # Storage configuration
+  storage:
+    data-dir: ./data
+    memtable:
+      max-size: 100MB
+      flush-threshold: 80MB
+    sstable:
+      max-size: 100MB
+      merge-threshold: 5
+    wal:
+      enabled: true
+      sync-interval: 1000
+      max-size: 1GB
+  
+  # Cluster configuration - Single Node
+  cluster:
+    nodes:
+      - id: node1
+        host: localhost
+        port: 8080
+        grpcPort: 9090
+        raftPort: 9091
+      # No additional nodes for single-node setup
+    
+    # Disable network discovery for single-node
+    enable-network-discovery: false
+    
+    # Disable auto-election for single-node
+    auto-election: false
+  
+  # Raft consensus configuration - Single Node
+  raft:
+    enabled: true
+    election-timeout: 5000
+    heartbeat-interval: 1000
+    log:
+      enabled: true
+      sync-interval: 1000
+      max-size: 1GB
+
+# Logging configuration
+logging:
+  level:
+    com.moniepoint.kvstore: INFO
+    org.springframework: WARN 

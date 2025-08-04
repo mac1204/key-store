@@ -1,27 +1,38 @@
 syntax = "proto3";
 
-package com.moniepoint.kvstore.raft;
+package raft;
 
 option java_multiple_files = true;
-option java_package = "com.moniepoint.kvstore.raft.grpc";
+option java_package = "com.moniepoint.kvstore.raft";
 option java_outer_classname = "RaftProto";
 
 // Raft Consensus Service
 service RaftService {
-  // AppendEntries RPC (used for heartbeat and log replication)
-  rpc AppendEntries(AppendEntriesRequest) returns (AppendEntriesResponse);
-  
-  // RequestVote RPC (used for leader election)
+  // Request vote for leader election
   rpc RequestVote(RequestVoteRequest) returns (RequestVoteResponse);
   
-  // InstallSnapshot RPC (used for snapshot installation)
-  rpc InstallSnapshot(InstallSnapshotRequest) returns (InstallSnapshotResponse);
+  // Append entries for log replication
+  rpc AppendEntries(AppendEntriesRequest) returns (AppendEntriesResponse);
   
-  // Get cluster status
-  rpc GetClusterStatus(ClusterStatusRequest) returns (ClusterStatusResponse);
+  // Install snapshot
+  rpc InstallSnapshot(InstallSnapshotRequest) returns (InstallSnapshotResponse);
 }
 
-// AppendEntries RPC
+// Request Vote Request
+message RequestVoteRequest {
+  int64 term = 1;
+  string candidate_id = 2;
+  int64 last_log_index = 3;
+  int64 last_log_term = 4;
+}
+
+// Request Vote Response
+message RequestVoteResponse {
+  int64 term = 1;
+  bool vote_granted = 2;
+}
+
+// Append Entries Request
 message AppendEntriesRequest {
   int64 term = 1;
   string leader_id = 2;
@@ -31,41 +42,11 @@ message AppendEntriesRequest {
   int64 leader_commit = 6;
 }
 
+// Append Entries Response
 message AppendEntriesResponse {
   int64 term = 1;
   bool success = 2;
-  string error = 3;
-}
-
-// RequestVote RPC
-message RequestVoteRequest {
-  int64 term = 1;
-  string candidate_id = 2;
-  int64 last_log_index = 3;
-  int64 last_log_term = 4;
-}
-
-message RequestVoteResponse {
-  int64 term = 1;
-  bool vote_granted = 2;
-  string error = 3;
-}
-
-// InstallSnapshot RPC
-message InstallSnapshotRequest {
-  int64 term = 1;
-  string leader_id = 2;
-  int64 last_included_index = 3;
-  int64 last_included_term = 4;
-  int64 offset = 5;
-  bytes data = 6;
-  bool done = 7;
-}
-
-message InstallSnapshotResponse {
-  int64 term = 1;
-  bool success = 2;
-  string error = 3;
+  int64 match_index = 3;
 }
 
 // Log Entry
@@ -75,45 +56,19 @@ message LogEntry {
   string operation = 3;
   string key = 4;
   string value = 5;
-  int64 ttl = 6;
-  int64 timestamp = 7;
 }
 
-// Cluster Status
-message ClusterStatusRequest {
-  // Empty message
+// Install Snapshot Request
+message InstallSnapshotRequest {
+  int64 term = 1;
+  string leader_id = 2;
+  int64 last_included_index = 3;
+  int64 last_included_term = 4;
+  bytes data = 5;
 }
 
-message ClusterStatusResponse {
-  bool success = 1;
-  string node_id = 2;
-  NodeState state = 3;
-  int64 current_term = 4;
-  int64 last_log_index = 5;
-  int64 last_log_term = 6;
-  int64 commit_index = 7;
-  int64 last_applied = 8;
-  repeated NodeInfo nodes = 9;
-  string error = 10;
-}
-
-// Node State Enum
-enum NodeState {
-  FOLLOWER = 0;
-  CANDIDATE = 1;
-  LEADER = 2;
-}
-
-// Node Information
-message NodeInfo {
-  string node_id = 1;
-  string host = 2;
-  int32 port = 3;
-  NodeState state = 4;
-  int64 current_term = 5;
-  int64 last_log_index = 6;
-  int64 last_log_term = 7;
-  bool is_leader = 8;
-  int64 next_index = 9;
-  int64 match_index = 10;
+// Install Snapshot Response
+message InstallSnapshotResponse {
+  int64 term = 1;
+  bool success = 2;
 } 

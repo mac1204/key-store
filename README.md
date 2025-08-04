@@ -42,8 +42,7 @@ Store a key-value pair with JSON support.
 **Request Body:**
 ```json
 {
-  "value": "{\"name\": \"John\", \"age\": 30}",
-  "ttl": 3600
+  "value": "{\"name\": \"John\", \"age\": 30}"
 }
 ```
 
@@ -78,26 +77,35 @@ Read a range of keys.
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Client App    │    │   Client App    │    │   Client App    │
 └─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘
-          │                      │                      │
-          └──────────────────────┼──────────────────────┘
-                                 │
+          │                       │                       │
+          └───────────────────────┼───────────────────────┘
+                                  │
                     ┌─────────────┴─────────────┐
                     │      Load Balancer        │
-                    │        (Nginx)            │
+                    │      (Nginx/HAProxy)      │
                     └─────────────┬─────────────┘
                                   │
         ┌─────────────────────────┼─────────────────────────┐
         │                         │                         │
 ┌───────▼────────┐    ┌──────────▼──────────┐    ┌───────▼────────┐
-│   KV Store     │    │    KV Store        │    │   KV Store     │
-│   Node 1       │    │    Node 2          │    │   Node 3       │
-│                │    │                     │    │                │
+│   KV Store     │    │    KV Store         │    │   KV Store     │
+│   Node 1       │    │    Node 2           │    │   Node 3       │
+│                │    │                      │    │                │
 │ ┌─────────────┐│    │┌─────────────────┐ │    │┌─────────────┐ │
-│ │   REST API  ││    ││   REST API     │ │    ││   REST API  │ │
-│ │   gRPC      ││    ││   gRPC         │ │    ││   gRPC      │ │
-│ │   Raft      ││    ││   Raft         │ │    ││   Raft      │ │
+│ │   REST API  ││    ││   REST API      │ │    ││   REST API  │ │
+│ │   (Port 8080)││    ││   (Port 8080)   │ │    ││   (Port 8080)││
 │ └─────────────┘│    │└─────────────────┘ │    │└─────────────┘ │
-│                │    │                     │    │                │
+│                │    │                      │    │                │
+│ ┌─────────────┐│    │┌─────────────────┐ │    │┌─────────────┐ │
+│ │   gRPC      ││    ││   gRPC          │ │    ││   gRPC      │ │
+│ │   (Port 9090)││    ││   (Port 9090)   │ │    ││   (Port 9090)││
+│ └─────────────┘│    │└─────────────────┘ │    │└─────────────┘ │
+│                │    │                      │    │                │
+│ ┌─────────────┐│    │┌─────────────────┐ │    │┌─────────────┐ │
+│ │   Raft      ││    ││   Raft          │ │    ││   Raft      │ │
+│ │   (Port 9091)││    ││   (Port 9091)   │ │    ││   (Port 9091)││
+│ └─────────────┘│    │└─────────────────┘ │    │└─────────────┘ │
+│                │    │                      │    │                │
 │ ┌─────────────┐│    │┌─────────────────┐ │    │┌─────────────┐ │
 │ │  MemTable   ││    ││   MemTable     │ │    ││   MemTable  │ │
 │ │  SSTables   ││    ││   SSTables     │ │    ││   SSTables  │ │
@@ -106,180 +114,83 @@ Read a range of keys.
 └────────────────┘    └─────────────────────┘    └────────────────┘
 ```
 
-## Configuration
+## Core Components
 
-### Application Properties
+### 1. **REST API Layer** (`KeyValueController`)
+- **Endpoints**: PUT, GET, DELETE, POST (batch operations), GET (range queries)
+- **Features**: JSON value support, range queries
+- **Port**: 8080 (REST), 8081 (Management)
 
-Key configuration in `application.yml`:
+### 2. **Service Layer** (`KeyValueService`)
+- **Business Logic**: CRUD operations, batch processing
+- **Caching**: In-memory cache for hot data
+- **Thread Safety**: ReadWriteLock for concurrent access
 
-```yaml
-kvstore:
-  storage:
-    data-dir: ./data
-    memtable:
-      max-size: 100MB
-    sstable:
-      max-size: 100MB
-  compaction:
-    enabled: true
-    interval: 300000ms
-  raft:
-    enabled: true
-    election-timeout: 5000ms
-    heartbeat-interval: 1000ms
-  hash-ring:
-    virtual-nodes-per-node: 150
-    replication-factor: 3
-  grpc:
-    enabled: true
-    port: 9090
-```
+### 3. **Storage Layer**
+- **MemTable**: In-memory write buffer (100MB max)
+- **SSTables**: Persistent disk storage (sorted)
+- **WAL**: Write-Ahead Log for crash recovery
+- **Compaction**: Background merge of SSTables
 
-### Environment Variables
+### 4. **Distributed Consensus** (`RaftReplicationService`)
+- **Leader Election**: Automatic failover
+- **Log Replication**: Strong consistency
+- **Fault Tolerance**: Majority-based quorum
 
-- `NODE_ID`: Node identifier
-- `NODE_HOST`: Node hostname  
-- `NODE_PORT`: Node port
-- `SPRING_PROFILES_ACTIVE`: Active profile
+### 5. **Inter-Node Communication** (`GrpcKeyValueService`)
+- **Protocol**: gRPC for high-performance RPC
+- **Port**: 9090 (gRPC), 9091 (Raft)
+- **Features**: Streaming, bidirectional communication
 
-## Multi-Node Setup
+## Performance Characteristics
 
-### Docker Compose
+- **Write Performance**: 10,000+ writes/sec per node
+- **Read Performance**: 50,000+ reads/sec per node
+- **Latency**: Sub-millisecond response times
+- **Throughput**: Linear scaling with node addition
 
-The project includes a `docker-compose.yml` for easy multi-node deployment:
+## Monitoring & Management
+
+- **Health Checks**: `/actuator/health`
+- **Metrics**: `/actuator/metrics`
+- **Application Info**: `/actuator/info`
+- **Management Port**: 8081
+
+## Docker Deployment
+
+The application includes Docker support for easy deployment:
 
 ```bash
-# Start 3-node cluster
+# Build the application
+docker build -t kvstore .
+
+# Run single node
+docker run -p 8080:8080 -p 8081:8081 kvstore
+
+# Run multi-node cluster
 docker-compose up -d
-
-# Check status
-docker-compose ps
-
-# View logs
-docker-compose logs kv-store-node1
 ```
-
-### Node Communication
-
-Nodes communicate via gRPC on port 9090 for:
-- Data replication
-- Cluster coordination
-- Load balancing
-
-### Raft Consensus
-
-The system uses Raft consensus protocol for:
-- **Leader Election**: Automatic leader selection and failover
-- **Log Replication**: All writes are replicated to followers
-- **Fault Tolerance**: System continues with majority of nodes
-- **Strong Consistency**: Linearizable read/write operations
-
-### Consistent Hashing (HashRing)
-
-The system uses consistent hashing for:
-- **Load Distribution**: Evenly distributes keys across nodes
-- **Fault Tolerance**: Minimal data redistribution during failures
-- **Scalability**: Easy to add/remove nodes without full rebalancing
-- **Replication**: Multiple copies of data across different nodes
 
 ## Development
 
 ### Project Structure
-
 ```
-kvstore/
-├── src/main/java/com/moniepoint/kvstore/
-│   ├── controller/          # REST API controllers
-│   ├── service/             # Business logic
-│   ├── grpc/               # gRPC service implementations
-│   ├── model/              # Data models (JSON support)
-│   ├── storage/            # Storage layer
-│   │   ├── wal/           # Write-Ahead Log
-│   │   ├── memtable/      # In-memory storage
-│   │   ├── sstable/       # Disk-based storage
-│   │   └── compaction/    # Compaction services
-│   └── util/              # Utilities
-├── src/main/resources/
-│   ├── application.yml     # Configuration
-│   └── proto/             # gRPC definitions
-├── docker/                # Docker files
-├── docker-compose.yml     # Multi-node deployment
-└── pom.xml               # Maven configuration
+src/main/java/com/moniepoint/kvstore/
+├── controller/          # REST API endpoints
+├── service/            # Business logic
+├── storage/            # Storage engine (MemTable, SSTables, WAL)
+├── raft/              # Raft consensus implementation
+├── grpc/              # gRPC service implementation
+└── model/             # Data models
 ```
 
-### Building
-
-```bash
-# Compile and test
-mvn clean compile test
-
-# Package
-mvn clean package
-
-# Run with specific profile
-java -jar target/kvstore-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev
-```
-
-## Performance
-
-### Benchmarks
-
-- **Write Throughput**: ~10,000 ops/sec per node
-- **Read Throughput**: ~50,000 ops/sec per node  
-- **Latency**: < 1ms for in-memory operations
-- **Durability**: WAL ensures ACID properties
-
-### Tuning
-
-1. **Memory**: Adjust JVM heap size with `-Xmx` and `-Xms`
-2. **Compaction**: Configure compaction intervals and thresholds
-3. **Storage**: Use SSD for better I/O performance
-
-## Monitoring
-
-### Health Checks
-
-- **Application Health**: `GET /actuator/health`
-- **Management**: `GET /actuator/info`
-
-### Metrics
-
-The application exposes metrics at `/actuator/metrics`:
-
-- `kvstore_operations_total`: Total operations
-- `kvstore_memory_usage_bytes`: Memory usage
-- `kvstore_disk_usage_bytes`: Disk usage
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Node not joining cluster**
-   - Check network connectivity
-   - Verify gRPC configuration
-   - Check logs for connection errors
-
-2. **High memory usage**
-   - Adjust memtable size
-   - Trigger compaction manually
-   - Monitor memory metrics
-
-3. **Slow performance**
-   - Check disk I/O
-   - Monitor compaction status
-   - Verify network latency
-
-### Logs
-
-Logs are available at:
-- **Application**: `logs/kvstore.log`
-- **Docker**: `docker-compose logs <service-name>`
-
-## Future Enhancements
-
-- **Sharding**: Automatic data sharding across nodes
-- **Backup/Restore**: Automated backup and restore capabilities
-- **Advanced Raft Features**: Snapshot support, dynamic membership
+### Key Technologies
+- **Spring Boot 3.2.0**: Application framework
+- **Java 17**: Programming language
+- **gRPC**: Inter-node communication
+- **Raft**: Distributed consensus
+- **Docker**: Containerization
+- **Maven**: Build automation
 
 ## License
 

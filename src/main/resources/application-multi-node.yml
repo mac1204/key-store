@@ -1,0 +1,62 @@
+# Multi-Node Configuration Example
+# Use this configuration for production or multi-node deployment
+
+server:
+  port: 8080
+
+# KV Store Configuration
+kvstore:
+  # Storage configuration
+  storage:
+    data-dir: ./data
+    memtable:
+      max-size: 100MB
+      flush-threshold: 80MB
+    sstable:
+      max-size: 100MB
+      merge-threshold: 5
+    wal:
+      enabled: true
+      sync-interval: 1000
+      max-size: 1GB
+  
+  # Cluster configuration - Multi Node
+  cluster:
+    nodes:
+      - id: node1
+        host: localhost
+        port: 8080
+        grpcPort: 9090
+        raftPort: 9091
+      - id: node2
+        host: localhost
+        port: 8082
+        grpcPort: 9092
+        raftPort: 9093
+      - id: node3
+        host: localhost
+        port: 8084
+        grpcPort: 9094
+        raftPort: 9095
+    
+    # Enable network discovery for multi-node
+    enable-network-discovery: true
+    
+    # Enable auto-election for multi-node
+    auto-election: true
+  
+  # Raft consensus configuration - Multi Node
+  raft:
+    enabled: true
+    election-timeout: 5000
+    heartbeat-interval: 1000
+    log:
+      enabled: true
+      sync-interval: 1000
+      max-size: 1GB
+
+# Logging configuration
+logging:
+  level:
+    com.moniepoint.kvstore: INFO
+    org.springframework: WARN 

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import io.grpc.Status;
 
 /**
  * gRPC service implementation for key-value store operations.
@@ -27,25 +28,21 @@ public class GrpcKeyValueService {
     /**
      * Handle PUT request via gRPC.
      */
-    public void put(String key, String value, long ttl, StreamObserver<KeyValueResponse> responseObserver) {
+    public void put(String key, String value, StreamObserver<KeyValueResponse> responseObserver) {
         try {
-            KeyValue result = keyValueService.put(key, value, ttl);
+            KeyValue result = keyValueService.put(key, value);
+            
             KeyValueResponse response = KeyValueResponse.newBuilder()
-                    .setSuccess(true)
                     .setKey(result.getKey())
                     .setValue(result.getValueAsString())
-                    .setTimestamp(result.getTimestamp())
-                    .setTtl(result.getTtl())
                     .build();
+            
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         } catch (Exception e) {
-            KeyValueResponse response = KeyValueResponse.newBuilder()
-                    .setSuccess(false)
-                    .setError(e.getMessage())
-                    .build();
-            responseObserver.onNext(response);
-            responseObserver.onCompleted();
+            responseObserver.onError(Status.INTERNAL
+                    .withDescription("Failed to put key-value: " + e.getMessage())
+                    .asRuntimeException());
         }
     }
 
@@ -62,7 +59,6 @@ public class GrpcKeyValueService {
                         .setKey(kv.getKey())
                         .setValue(kv.getValueAsString())
                         .setTimestamp(kv.getTimestamp())
-                        .setTtl(kv.getTtl())
                         .build();
                 responseObserver.onNext(response);
             } else {

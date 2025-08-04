@@ -69,9 +69,11 @@ public class SSTableManager {
                     Optional<KeyValue> result = sstable.get(key);
                     if (result.isPresent()) {
                         KeyValue value = result.get();
-                        if (!value.isExpired() && !value.isDeleted()) {
-                            return result;
+                        // Skip expired or deleted entries
+                        if (value.isDeleted()) {
+                            continue;
                         }
+                        return result;
                     }
                 } catch (IOException e) {
                     System.err.println("Error reading from SSTable " + sstableId + ": " + e.getMessage());
@@ -138,7 +140,7 @@ public class SSTableManager {
                     try {
                         List<KeyValue> values = sstable.getAllKeyValues();
                         for (KeyValue value : values) {
-                            if (!value.isExpired() && !value.isDeleted()) {
+                            if (!value.isDeleted()) {
                                 mergedData.put(value.getKey(), value);
                             }
                         }
@@ -272,8 +274,11 @@ public class SSTableManager {
                     // Record position
                     index.put(key, (long) dos.size());
                     
-                    // Write entry
-                    writeEntry(dos, key, value);
+                    // Write key-value pair
+                    dos.writeUTF(key);
+                    dos.writeUTF(value.getValueAsString());
+                    dos.writeLong(value.getTimestamp());
+                    dos.writeBoolean(value.isDeleted());
                 }
             }
         }
@@ -343,7 +348,6 @@ public class SSTableManager {
             dos.writeUTF(key);
             dos.writeUTF(value.getValueAsString());
             dos.writeLong(value.getTimestamp());
-            dos.writeLong(value.getTtl());
             dos.writeBoolean(value.isDeleted());
         }
 
@@ -355,10 +359,9 @@ public class SSTableManager {
                 String key = dis.readUTF();
                 String value = dis.readUTF();
                 long timestamp = dis.readLong();
-                long ttl = dis.readLong();
                 boolean deleted = dis.readBoolean();
                 
-                KeyValue kv = new KeyValue(key, value, ttl);
+                KeyValue kv = new KeyValue(key, value);
                 kv.setTimestamp(timestamp);
                 kv.setDeleted(deleted);
                 

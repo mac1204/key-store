@@ -1,13 +1,13 @@
 syntax = "proto3";
 
-package com.moniepoint.kvstore;
+package kvstore;
 
 option java_multiple_files = true;
 option java_package = "com.moniepoint.kvstore.grpc";
-option java_outer_classname = "KVStoreProto";
+option java_outer_classname = "KvStoreProto";
 
 // Key-Value Store Service
-service KVStoreService {
+service KvStoreService {
   // Put a key-value pair
   rpc Put(PutRequest) returns (PutResponse);
   
@@ -17,133 +17,81 @@ service KVStoreService {
   // Delete a key-value pair
   rpc Delete(DeleteRequest) returns (DeleteResponse);
   
-  // Get all key-value pairs
-  rpc GetAll(GetAllRequest) returns (GetAllResponse);
+  // Batch put multiple key-value pairs
+  rpc BatchPut(BatchPutRequest) returns (BatchPutResponse);
   
-  // Check if a key exists
-  rpc Exists(ExistsRequest) returns (ExistsResponse);
-  
-  // Get store statistics
-  rpc GetStats(StatsRequest) returns (StatsResponse);
-  
-  // Clear all data
-  rpc Clear(ClearRequest) returns (ClearResponse);
-  
-  // Compact the store
-  rpc Compact(CompactRequest) returns (CompactResponse);
+  // Get a range of keys
+  rpc GetRange(GetRangeRequest) returns (GetRangeResponse);
 }
 
-// Put request
+// Put Request
 message PutRequest {
   string key = 1;
   string value = 2;
-  int64 ttl = 3; // Time to live in seconds, 0 means no expiration
 }
 
-// Put response
+// Put Response
 message PutResponse {
   bool success = 1;
   string key = 2;
   string value = 3;
   int64 timestamp = 4;
-  int64 ttl = 5;
-  string error = 6;
+  string error = 5;
 }
 
-// Get request
+// Get Request
 message GetRequest {
   string key = 1;
 }
 
-// Get response
+// Get Response
 message GetResponse {
   bool success = 1;
   string key = 2;
   string value = 3;
   int64 timestamp = 4;
-  int64 ttl = 5;
-  string error = 6;
+  string error = 5;
 }
 
-// Delete request
+// Delete Request
 message DeleteRequest {
   string key = 1;
 }
 
-// Delete response
+// Delete Response
 message DeleteResponse {
   bool success = 1;
   string message = 2;
-  string error = 3;
 }
 
-// Get all request
-message GetAllRequest {
-  // Empty message
+// Batch Put Request
+message BatchPutRequest {
+  map<string, string> key_value_pairs = 1;
 }
 
-// Get all response
-message GetAllResponse {
+// Batch Put Response
+message BatchPutResponse {
   bool success = 1;
-  repeated KeyValuePair key_values = 2;
+  repeated KeyValuePair results = 2;
   string error = 3;
 }
 
-// Key-value pair
+// Key-Value Pair
 message KeyValuePair {
   string key = 1;
   string value = 2;
   int64 timestamp = 3;
-  int64 ttl = 4;
-  bool deleted = 5;
 }
 
-// Exists request
-message ExistsRequest {
-  string key = 1;
+// Get Range Request
+message GetRangeRequest {
+  string start_key = 1;
+  string end_key = 2;
 }
 
-// Exists response
-message ExistsResponse {
-  bool exists = 1;
-  string error = 2;
-}
-
-// Stats request
-message StatsRequest {
-  // Empty message
-}
-
-// Stats response
-message StatsResponse {
+// Get Range Response
+message GetRangeResponse {
   bool success = 1;
-  int64 size = 2;
-  int64 memory_usage = 3;
-  int64 disk_usage = 4;
-  int64 sstable_count = 5;
-  string error = 6;
-}
-
-// Clear request
-message ClearRequest {
-  // Empty message
-}
-
-// Clear response
-message ClearResponse {
-  bool success = 1;
-  string message = 2;
-  string error = 3;
-}
-
-// Compact request
-message CompactRequest {
-  // Empty message
-}
-
-// Compact response
-message CompactResponse {
-  bool success = 1;
-  string message = 2;
+  repeated KeyValuePair results = 2;
   string error = 3;
 } 

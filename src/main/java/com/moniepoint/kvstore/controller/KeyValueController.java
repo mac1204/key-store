@@ -32,24 +32,7 @@ public class KeyValueController {
             @RequestBody Map<String, Object> request) {
         
         String value = (String) request.get("value");
-        Object ttlObj = request.get("ttl");
-        Long ttl = null;
-        
-        if (ttlObj != null) {
-            if (ttlObj instanceof Integer) {
-                ttl = ((Integer) ttlObj).longValue();
-            } else if (ttlObj instanceof Long) {
-                ttl = (Long) ttlObj;
-            }
-        }
-        
-        KeyValue result;
-        if (ttl != null && ttl > 0) {
-            result = keyValueService.put(key, value, ttl);
-        } else {
-            result = keyValueService.put(key, value);
-        }
-        
+        KeyValue result = keyValueService.put(key, value);
         return ResponseEntity.ok(result);
     }
 
